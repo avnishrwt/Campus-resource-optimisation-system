@@ -1,3 +1,6 @@
+//Resource class represents a college resource
+//such as a lab, classroom, library, etc.
+
 #include<iostream>
 #include<vector>
 #include<string>
