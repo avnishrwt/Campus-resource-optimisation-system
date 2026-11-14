@@ -1,218 +1,153 @@
+// MODULE 4: REQUEST & TRANSACTION MODULE (Database: transactions.txt)
+// Linked list = len-den history, HashMap = abhi item kiske paas hai,
+// 2 MaxHeaps = student item requests aur teacher room requests
+#pragma once
 #include <iostream>
+#include <fstream>
 #include <string>
-#include <vector>
-#include <unordered_map>
-#include <queue>
- 
+#include "DataStructures.cpp"
 using namespace std;
- 
- 
- 
-class request     // for request created by a user 
+
+struct ItemRequest 
 {
-private:
-    int requestId;
-    int userId;
-    int resourceId;       // which resource the user wants
-    string description;
-    int priority;         // 3 = urgent, 2 = medium, 1 = low
-    string status;        // Pending Approved Rejected Completed 
-
- 
-public:
-    request(int reqId, int uId, int resId, string des, int prio)
+    string studentId, category;
+    int priority;   // 10 = Exam, 8 = Assignment, 2 = Normal
+    int order;      // same priority pe jo pehle aaya use pehle milega
+    bool operator<(const ItemRequest& other) const 
     {
-        requestId = reqId;
-        userId = uId;
-        resourceId = resId;
-        description = des;
-        priority = prio;
-        status = "Pending";    // Initially any status would be pending only 
-
-    }
-    
-
-    // Getter Functions 
-
-    int getRequestId()   { return requestId; }
-    int getUserId()      { return userId; }
-    int getResourceId()  { return resourceId; }
-    int getPriority()    { return priority; }
-
-
-    string getStatus()   { return status; }
- 
-    // Setter Function 
-    
-    void setStatus(string s) { status = s; }
- 
-    void display()
-    {
-        cout << "Request ID  : " << requestId << endl;
-        cout << "User ID     : " << userId << endl;
-        cout << "Resource ID : " << resourceId << endl;
-        cout << "Description : " << description << endl;
-        cout << "Priority    : " << priority << endl;
-        cout << "Status      : " << status << endl;
+        if (priority != other.priority) return priority < other.priority;
+        return order > other.order;
     }
 };
- 
- 
-// Transaction Class 
 
-class transaction
+struct RoomRequest 
 {
-private:
-    int transactionId;
-    int requestId;
-    int userId;
-    int resourceId;
-    bool returned;
- 
-public:
-    transaction(int transId, int reqId, int uId, int resId)
+    string teacherId, day, time, purpose;
+    int priority;   // 10 = Quiz, 8 = Extra Class, 4 = Doubt
+    int order;
+    bool operator<(const RoomRequest& other) const 
     {
-        transactionId = transId;
-        requestId = reqId;
-        userId = uId;
-        resourceId = resId;
-        returned = false;          // borrowed right now
+        if (priority != other.priority) return priority < other.priority;
+        return order > other.order;
     }
- 
-    // Getter Functions
-    int getTransactionId() { return transactionId; }
-    int getRequestId()     { return requestId; }
-    int getResourceId()    { return resourceId; }
-    bool isReturned()      { return returned; }
- 
-    void markReturned() { returned = true; }
- 
-    void display()
-    {
-        cout << "Transaction ID : " << transactionId << endl;
-        cout << "Request ID     : " << requestId << endl;
-        cout << "User ID        : " << userId << endl;
-        cout << "Resource ID    : " << resourceId << endl;
-        cout << "Status         : " << (returned ? "Returned" : "Borrowed") << endl;
-
-    }
-
 };
- 
- 
-// Storage Class
 
-class storage
+struct TransactionNode 
 {
-private:
-    // the only copy of every object
-    vector<request> requests;
-    vector<transaction> transactions;
- 
-    // searching the index in vector with the help of indexes 
-    unordered_map<int, int> requestIndex;
-    unordered_map<int, int> transactionIndex;
- 
-    // history: userId -> list of transaction ids
-    unordered_map<int, vector<int>> userHistory;
- 
-    // urgent requests first: stores priority, -requestId 
-    priority_queue<pair<int, int>> pendingQueue;
+    int txId;
+    string giverId, receiverId, itemId, status;
+    TransactionNode* next;
 
-    // - is here because of the reason if same priority comes for two requests 
-    // for example 5001 and 5002 then out priority queue will have given class to 1002 
-    // who came late , so we used the - sign here which will make -1001 bigger than -1002 
-    // so 1001 will get the class
- 
-    int next_req_Id = 1001;
-    int next_trans_Id = 5001;
- 
-    // priority assignment rule
-    int assignPriority(string purpose)
-    {
-        if (purpose == "exam")  return 3;
-        if (purpose == "event") return 2; 
-        return 1;                          // project, practice, others
-    }
- 
+    TransactionNode(int id, string from, string to, string item, string st)
+        : txId(id), giverId(from), receiverId(to), itemId(item), status(st), next(nullptr) {}
+};
+
+class TransactionManager 
+{
+    TransactionNode* head;
+    TransactionNode* tail;               // last node, isse naya node O(1) me judta hai
+    HashMap<string> activeLendMap;       // ItemID -> BorrowerID
+    MaxHeap<ItemRequest> itemQueue;
+    MaxHeap<RoomRequest> roomQueue;
+    int txCounter;
+    int requestCounter;
+
 public:
- // for request creation 
+    TransactionManager() : head(nullptr), tail(nullptr), txCounter(1), requestCounter(0) {}
 
-    int addrequest(int userId, int resourceId, string purpose, string description)
+    ~TransactionManager() 
     {
-        int id = next_req_Id++;
-        int prio = assignPriority(purpose);
- 
-        requests.push_back(request(id, userId, resourceId, description, prio));
-        requestIndex[id] = requests.size() - 1;     // adds id key with request made... it will be at the last of the request vector index
- 
-        pendingQueue.push({prio, -id});    // -id: older request wins a tie
-        return id;
-    }
- 
-
-    request* findRequest(int requestId)
-    {
-        if (requestIndex.count(requestId) == 0) return nullptr;
-        return &requests[requestIndex[requestId]];  // jo bi iss function ko call krega usse ye address mil jatyega requests me jo bi request pdi h uska 
-    }
- 
-    transaction* findTransaction(int transactionId)
-    {
-        if (transactionIndex.count(transactionId) == 0) return nullptr;
-        return &transactions[transactionIndex[transactionId]];
-    }
- 
-
-    int getNextRequest()
-    {
-        while (!pendingQueue.empty())
-        {
-            int id = -pendingQueue.top().second;
-            pendingQueue.pop();
-            
-
-            request* r = findRequest(id);     // Done for safe check so that if there was no request for this id then find request will give the nullptr
-
-            if (r != nullptr && r->getStatus() == "Pending")
-                return id;                 // skip ones already handled
+        while (head) {
+            TransactionNode* temp = head;
+            head = head->next;
+            delete temp;
         }
-        return -1;
     }
- 
-    
-    int borrow(int requestId)
-    {
-        request* r = findRequest(requestId);
-        if (r == nullptr || r->getStatus() != "Pending") return -1;
- 
-        int transId = next_trans_Id++;
-        
-        transactions.push_back(transaction(transId, requestId, r->getUserId(), r->getResourceId()));
 
-        transactionIndex[transId] = transactions.size() - 1;
-        userHistory[r->getUserId()].push_back(transId);
- 
-        r->setStatus("Approved");
-        return transId;
-    }
- 
-   
- 
+    // ---------------- Len-Den ----------------
+    void addTransaction(string giver, string receiver, string itemId, string action, bool saveToDisk = true) {
+        int currentId = txCounter++;
+        TransactionNode* newNode = new TransactionNode(currentId, giver, receiver, itemId, action);
 
-    int returnResource(int transactionId)
-    {
-        transaction* t = findTransaction(transactionId);
-        if (t == nullptr || t->isReturned()) return -1;
-
-        t->markReturned();
-        request* r = findRequest(t->getRequestId());
-        if (r != nullptr)
-        {
-            r->setStatus("Completed");
+        if (!head) {                     // 1. list ke end me jodo
+            head = tail = newNode;
+        } else {
+            tail->next = newNode;
+            tail = newNode;
         }
-        return t->getResourceId();
+
+        if (action == "BORROWED") {      // 2. map update
+            activeLendMap.put(itemId, receiver);
+        } else if (action == "RETURNED") {
+            activeLendMap.remove(itemId);
+        }
+
+        if (saveToDisk) {                // 3. file me save
+            ofstream out("transactions.txt", ios::app);
+            out << currentId << " " << giver << " " << receiver << " " << itemId << " " << action << "\n";
+            out.close();
+        }
     }
 
-    
+    void loadFromFile() {
+        ifstream in("transactions.txt");
+        if (!in) return;
+        int id;
+        string giver, receiver, item, action;
+        while (in >> id >> giver >> receiver >> item >> action) {
+            txCounter = id;
+            addTransaction(giver, receiver, item, action, false);   // false: dobara file me mat likho
+        }
+        in.close();
+    }
+
+    void showHistory() const {
+        cout << "\n  --- LEN-DEN HISTORY (linked list) ---\n";
+        if (!head) {
+            cout << "  No transactions yet.\n";
+        } else {
+            for (TransactionNode* temp = head; temp; temp = temp->next) {
+                cout << "  TX#" << temp->txId << " | " << temp->itemId
+                     << " | " << temp->giverId << " -> " << temp->receiverId
+                     << " | " << temp->status << "\n";
+            }
+        }
+
+        cout << "\n  --- CURRENTLY BORROWED (hash map) ---\n";
+        if (activeLendMap.empty()) {
+            cout << "  All items are with their owners.\n";
+        } else {
+            DynamicArray<string> items;
+            activeLendMap.getKeys(items);
+            for (string item : items)
+                cout << "  " << item << " is with " << activeLendMap.get(item) << "\n";
+        }
+    }
+
+    string getBorrower(string itemId) const { return activeLendMap.get(itemId); }   // "" = kisi ke paas nahi
+    int borrowedCount() const { return activeLendMap.size(); }
+
+    // ---------------- Student item requests ----------------
+    void addItemRequest(string studentId, string category, int priority) {
+        itemQueue.push({studentId, category, priority, requestCounter++});
+    }
+    bool hasItemRequests() const { return !itemQueue.empty(); }
+    ItemRequest popItemRequest() {       // pehle hasItemRequests() check karna
+        ItemRequest top = itemQueue.top();
+        itemQueue.pop();
+        return top;
+    }
+
+    // ---------------- Teacher room requests ----------------
+    void addRoomRequest(string teacherId, string day, string time, string purpose, int priority) {
+        roomQueue.push({teacherId, day, time, purpose, priority, requestCounter++});
+    }
+    bool hasRoomRequests() const { return !roomQueue.empty(); }
+    RoomRequest popRoomRequest() {       // pehle hasRoomRequests() check karna
+        RoomRequest top = roomQueue.top();
+        roomQueue.pop();
+        return top;
+    }
+
+    int pendingRequests() const { return itemQueue.size() + roomQueue.size(); }
 };
