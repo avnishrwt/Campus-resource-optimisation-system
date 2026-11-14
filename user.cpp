@@ -1,311 +1,133 @@
-
+// MODULE 1: USER MODULE (Database: users.txt)
+#pragma once
 #include <iostream>
-#include <vector>
+#include <fstream>
 #include <string>
+#include "DataStructures.cpp"
 using namespace std;
-class User
-{
-private:
-    int userId;
-    string name;
-    string department;
-    int year;
 
+class User {
+protected:
+    string userId, name, role, dept;
 public:
-    User(int id, string n, string dept, int y)
-    {
-        userId = id;
-        name = n;
-        department = dept;
-        year = y;
+    User(string id, string n, string r, string d) : userId(id), name(n), role(r), dept(d) {}
+    virtual ~User() {}
+
+    string getId() const { return userId; }
+    string getName() const { return name; }
+    string getRole() const { return role; }
+    string getDept() const { return dept; }
+
+    virtual void showProfile() const = 0;
+    virtual string toFileLine() const = 0;   // file me save karne ke liye
+};
+
+class Student : public User {
+    int semester;
+public:
+    Student(string id, string n, string d, int sem) : User(id, n, "Student", d), semester(sem) {}
+
+    void showProfile() const override {
+        cout << "  [Student] " << userId << " | " << name << " | " << dept << " | Sem " << semester << "\n";
+        cout << "     Can: lend items, borrow items, find free rooms to study\n";
     }
-    int getUserId()
-    {
-        return userId;
-    }
-    string getName()
-    {
-        return name;
-    }
-    string getDepartment()
-    {
-        return department;
-    }
-    int getYear()
-    {
-        return year;
-    }
-    void display()
-    {
-        cout << "User ID: " << userId << endl;
-        cout << "Name: " << name << endl;
-        cout << "Department: " << department << endl;
-        cout << "Year: " << year << endl;
+
+    string toFileLine() const override {
+        return "Student " + userId + " " + name + " " + dept + " " + to_string(semester);
     }
 };
 
-class BorrowRecord
-{
-private:
-    int userId;
-    int resourceId;
-    string type;
-    string startTime;
-    string endTime;
-    bool active;
+class Teacher : public User {
+    string subject, freeSlot;
 public:
-    BorrowRecord(int uId, int rId, string t, string start = "", string end = "")
-    {
-        userId = uId;
-        resourceId = rId;
-        type = t;
-        startTime = start;
-        endTime = end;
-        active = true;
-    }
-    int getUserId()
-    {
-        return userId;
-    }
-    int getResourceId()
-    {
-        return resourceId;
-    }
-    string getType()
-    {
-        return type;
-    }
-    string getStartTime()
-    {
-        return startTime;
-    }
-    string getEndTime()
-    {
-        return endTime;
-    }
-    bool getActive()
-    {
-        return active;
-    }
-    void completeRecord()
-    {
-        active = false;
-    }
-    void display()
-    {
-        cout << "User ID: " << userId << endl;
-        cout << "Resource ID: " << resourceId << endl;
-        cout << "Type: " << type << endl;
-        cout << "Time: " << startTime << " - " << endTime << endl;
-        cout << "Status: ";
+    Teacher(string id, string n, string d, string sub, string slot)
+        : User(id, n, "Teacher", d), subject(sub), freeSlot(slot) {}
 
-        if(active)
-            cout << "Active" << endl;
-        else
-            cout << "Completed" << endl;
+    string getSubject() const { return subject; }
+
+    void showProfile() const override {
+        cout << "  [Teacher] " << userId << " | " << name << " | " << dept
+             << " | Subject: " << subject << " | Doubt slot: " << freeSlot << "\n";
+        cout << "     Can: book free classrooms on priority, mentor students\n";
+    }
+
+    string toFileLine() const override {
+        return "Teacher " + userId + " " + name + " " + dept + " " + subject + " " + freeSlot;
     }
 };
 
-class UserManager
-{
-private:
-    vector<User> users;
-    vector<BorrowRecord> records;
-    int nextUserId = 101;
-
+class UserManager {
+    DynamicArray<User*> users;
 public:
-    void addUser(string name, string department, int year)
-    {
-        User newUser(nextUserId, name, department, year);
-        users.push_back(newUser);
-
-        cout << "User added. ID: " << nextUserId << endl;
-
-        nextUserId++;
+    ~UserManager() {
+        for (User* u : users) delete u;
     }
 
-    void showUsers()
-    {
-        if(users.empty())
-        {
-            cout << "No users available." << endl;
-            return;
-        }
-
-        for(int i = 0; i < users.size(); i++)
-        {
-            users[i].display();
-            cout << endl;
-        }
+    void saveToFile() const {
+        ofstream out("users.txt");
+        for (User* u : users) out << u->toFileLine() << "\n";
+        out.close();
     }
 
-    int searchUserById(int id)
-    {
-        for(int i = 0; i < users.size(); i++)
-        {
-            if(users[i].getUserId() == id)
-            {
-                return i;
+    void loadFromFile() {
+        ifstream in("users.txt");          // file nahi hai to loop chalega hi nahi
+        string type, id, name, dept, sub, slot;
+        int sem;
+        while (in >> type) {
+            if (type == "Student") {
+                in >> id >> name >> dept >> sem;
+                users.push_back(new Student(id, name, dept, sem));
+            } else if (type == "Teacher") {
+                in >> id >> name >> dept >> sub >> slot;
+                users.push_back(new Teacher(id, name, dept, sub, slot));
             }
         }
+        in.close();
 
-        return -1;
-    }
-
-    void searchUserByName(string name)
-    {
-        bool found = false;
-
-        for(int i = 0; i < users.size(); i++)
-        {
-            if(users[i].getName() == name)
-            {
-                users[i].display();
-                cout << endl;
-                found = true;
-            }
-        }
-
-        if(!found)
-        {
-            cout << "User not found." << endl;
+        if (users.empty()) {   // file nahi thi ya khaali thi: sample users
+            users.push_back(new Student("S101", "Aman", "CSE", 3));
+            users.push_back(new Student("S102", "Rohan", "CSE", 3));
+            users.push_back(new Student("S103", "Priya", "ECE", 3));
+            users.push_back(new Teacher("T201", "Dr.Sharma", "CSE", "DSA", "02:10"));
+            users.push_back(new Teacher("T202", "Prof.Verma", "ECE", "Digital_Logic", "12:00"));
+            saveToFile();
         }
     }
 
-    void searchUserByDepartment(string department)
-    {
-        bool found = false;
-
-        for(int i = 0; i < users.size(); i++)
-        {
-            if(users[i].getDepartment() == department)
-            {
-                users[i].display();
-                cout << endl;
-                found = true;
-            }
-        }
-
-        if(!found)
-        {
-            cout << "No users found in department." << endl;
-        }
+    bool addStudent(string id, string name, string dept, int sem) {
+        if (findUser(id)) return false;          // ID pehle se hai
+        users.push_back(new Student(id, name, dept, sem));
+        saveToFile();
+        return true;
     }
 
-    void findUserById(int id)
-    {
-        int index = searchUserById(id);
-
-        if(index != -1)
-        {
-            users[index].display();
-        }
-        else
-        {
-            cout << "User not found." << endl;
-        }
+    bool addTeacher(string id, string name, string dept, string sub, string slot) {
+        if (findUser(id)) return false;
+        users.push_back(new Teacher(id, name, dept, sub, slot));
+        saveToFile();
+        return true;
     }
 
-    void searchUser(int id)
-    {
-        findUserById(id);
+    User* findUser(string id) const {
+        for (User* u : users)
+            if (u->getId() == id) return u;
+        return nullptr;
     }
 
-    void searchUser(string name)
-    {
-        searchUserByName(name);
+    bool isStudent(string id) const {
+        User* u = findUser(id);
+        return u && u->getRole() == "Student";
     }
 
-    bool userExists(int userId)
-    {
-        return searchUserById(userId) != -1;
+    bool isTeacher(string id) const {
+        User* u = findUser(id);
+        return u && u->getRole() == "Teacher";
     }
 
-    bool alreadyBorrowed(int userId, int resourceId, string start, string end)
-    {
-        for(int i = 0; i < records.size(); i++)
-        {
-            if(records[i].getUserId() == userId &&
-               records[i].getResourceId() == resourceId &&
-               records[i].getType() == "Borrow" &&
-               records[i].getStartTime() == start &&
-               records[i].getEndTime() == end &&
-               records[i].getActive())
-            {
-                return true;
-            }
-        }
-
-        return false;
+    void showAllUsers() const {
+        if (users.empty()) { cout << "  No users yet.\n"; return; }
+        for (User* u : users) u->showProfile();
     }
 
-    void borrowResource(int userId, int resourceId, string start = "", string end = "")
-    {
-        if(!userExists(userId))
-        {
-            cout << "User does not exist." << endl;
-            return;
-        }
-
-        if(alreadyBorrowed(userId, resourceId, start, end))
-        {
-            cout << "Already booked for this time." << endl;
-            return;
-        }
-
-        BorrowRecord newRecord(userId, resourceId, "Borrow", start, end);
-        records.push_back(newRecord);
-
-        cout << "Resource booked." << endl;
-    }
-
-    void lendResource(int userId, int resourceId, string start = "", string end = "")
-    {
-        if(!userExists(userId))
-        {
-            cout << "User does not exist." << endl;
-            return;
-        }
-
-        BorrowRecord newRecord(userId, resourceId, "Lend", start, end);
-        records.push_back(newRecord);
-
-        cout << "Resource listed for lending." << endl;
-    }
-
-    void returnResource(int userId, int resourceId, string start = "", string end = "")
-    {
-        for(int i = 0; i < records.size(); i++)
-        {
-            if(records[i].getUserId() == userId &&
-               records[i].getResourceId() == resourceId &&
-               records[i].getType() == "Borrow" &&
-               records[i].getStartTime() == start &&
-               records[i].getEndTime() == end &&
-               records[i].getActive())
-            {
-                records[i].completeRecord();
-
-                cout << "Resource returned." << endl;
-                return;
-            }
-        }
-
-        cout << "Active borrow record not found." << endl;
-    }
-
-    void showRecords()
-    {
-        if(records.empty())
-        {
-            cout << "No records available." << endl;
-            return;
-        }
-
-        for(int i = 0; i < records.size(); i++)
-        {
-            records[i].display();
-            cout << endl;
-        }
-    }
+    int count() const { return users.size(); }
 };
