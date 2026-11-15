@@ -1,0 +1,5 @@
+Student S101 Aman CSE 3
+Student S102 Rohan CSE 3
+Student S103 Priya ECE 3
+Teacher T201 Dr.Sharma CSE DSA 02:10
+Teacher T202 Prof.Verma ECE Digital_Logic 12:00
