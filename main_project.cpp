@@ -290,10 +290,10 @@ int main() {
     while (true) {
         printTitle("CAMPUS RESOURCE & SPACE SYSTEM");
         cout << "  1. Dashboard\n"
-             << "  2. Users            (Module 1)\n"
-             << "  3. Shared items     (Module 2)\n"
-             << "  4. Classrooms       (Module 3)\n"
-             << "  5. Requests/Len-Den (Module 4)\n"
+             << "  2. Users                    (Module 1)\n"
+             << "  3. Shared items             (Module 2)\n"
+             << "  4. Classrooms               (Module 3)\n"
+             << "  5. Requests and transaction (Module 4)\n"
              << "  0. Exit\n";
         int ch = readInt("  Choice: ");
 
