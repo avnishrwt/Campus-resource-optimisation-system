@@ -55,7 +55,8 @@ public:
         ifstream in("resources.txt");      // file nahi hai to loop chalega hi nahi
         string id, name, cat, owner, status;
         int dur, cond;
-        while (in >> id >> name >> cat >> owner >> dur >> cond >> status) {
+        while (in >> id >> name >> cat >> owner >> dur >> cond >> status) 
+        {
             addItem(id, name, cat, owner, dur, cond, status, false);
         }
         in.close();
