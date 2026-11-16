@@ -230,11 +230,11 @@ void roomMenu() {
 
 void transactionMenu() {
     while (true) {
-        printTitle("MODULE 4: REQUESTS & LEN-DEN");
+        printTitle("MODULE 4: REQUESTS & TRANSACTION");
         cout << "  1. Borrow an item\n  2. Return an item\n"
              << "  3. Student: request item (priority)\n  4. Allocate item to top request\n"
              << "  5. Teacher: request room (priority)\n  6. Allocate room to top request\n"
-             << "  7. Show len-den history\n  0. Back\n";
+             << "  7. Show transaction history\n  0. Back\n";
         int ch = readInt("  Choice: ");
         if (ch == 0) return;
 
